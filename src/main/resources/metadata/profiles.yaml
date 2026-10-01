@@ -1,0 +1,8 @@
+group: io.kestra.plugin.sent.profiles
+name: "profiles"
+title: "Sent Sender Profiles"
+description: "List and inspect Sent Sender Profiles."
+body: "Uses the current v3 `/sender-profiles` endpoints and intentionally omits `x-profile-id` when accessing organization-scoped Sender Profile resources."
+videos: []
+createdBy: "Sent"
+managedBy: "Sent"

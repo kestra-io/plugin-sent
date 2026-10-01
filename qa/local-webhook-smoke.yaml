@@ -1,0 +1,15 @@
+id: sent_webhook_qa
+namespace: qa.sent
+
+tasks:
+  - id: log_verified_event
+    type: io.kestra.plugin.core.log.Log
+    message: "Verified {{ trigger.event }} with dedupe {{ trigger.dedupeKey }}"
+
+triggers:
+  - id: sent_webhook
+    type: io.kestra.plugin.sent.triggers.EventTrigger
+    key: local-webhook-key
+    signingSecret: whsec_abcdef1234567890
+    events:
+      - message.received

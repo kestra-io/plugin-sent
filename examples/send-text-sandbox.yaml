@@ -1,0 +1,18 @@
+id: sent_text_sandbox
+namespace: company.messaging
+
+inputs:
+  - id: recipient
+    type: STRING
+
+tasks:
+  - id: send_message
+    type: io.kestra.plugin.sent.messages.SendMessage
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    to:
+      - "{{ inputs.recipient }}"
+    channels:
+      - sent
+      - sms
+    text: "Your test notification is ready."
+    sandbox: true

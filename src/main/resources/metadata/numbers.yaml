@@ -1,0 +1,8 @@
+group: io.kestra.plugin.sent.numbers
+name: "numbers"
+title: "Sent Numbers"
+description: "Look up phone-number metadata through Sent."
+body: "GetPhoneNumberDetails validates E.164 input and fetches normalized carrier and number metadata from the Sent v3 lookup endpoint."
+videos: []
+createdBy: "Sent"
+managedBy: "Sent"

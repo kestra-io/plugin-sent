@@ -1,0 +1,34 @@
+id: sent_webhook_trigger_qa
+namespace: qa.sent
+description: >
+  Signed Sent webhook QA. This flow has no message/contact mutation and is safe to
+  trigger with a disposable Sent webhook test event.
+
+tasks:
+  - id: verified_event_summary
+    type: io.kestra.plugin.core.output.OutputValues
+    values:
+      result: PASS — Sent webhook signature and replay window verified
+      event: "{{ trigger.event }}"
+      field: "{{ trigger.field }}"
+      webhookId: "{{ trigger.webhookId }}"
+      dedupeKey: "{{ trigger.dedupeKey }}"
+
+outputs:
+  - id: result
+    type: STRING
+    value: "{{ outputs.verified_event_summary.values.result }}"
+  - id: event
+    type: STRING
+    value: "{{ outputs.verified_event_summary.values.event }}"
+  - id: dedupeKey
+    type: STRING
+    value: "{{ outputs.verified_event_summary.values.dedupeKey }}"
+
+triggers:
+  - id: sent_webhook
+    type: io.kestra.plugin.sent.triggers.EventTrigger
+    key: "{{ secret('SENT_WEBHOOK_URL_KEY') }}"
+    signingSecret: "{{ secret('SENT_WEBHOOK_SIGNING_SECRET') }}"
+    events:
+      - "*"

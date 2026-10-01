@@ -1,0 +1,139 @@
+id: sent_all_tasks_sandbox_qa
+namespace: qa.sent
+description: >
+  Manual Sent sandbox QA for all 13 plugin tasks. Use only a disposable Sent account,
+  profile, contacts, messages, templates, and phone numbers. Every mutation is forced
+  into sandbox mode, so this flow must never be changed to sandbox false for review.
+
+inputs:
+  - id: test_phone_number
+    type: STRING
+    description: REPLACE_WITH_SENT_APPROVED_TEST_NUMBER in E.164 format; never use a customer number.
+  - id: existing_contact_id
+    type: STRING
+    description: REPLACE_WITH_DISPOSABLE_CONTACT_ID that may be safely read and sandbox-updated.
+  - id: existing_message_id
+    type: STRING
+    description: REPLACE_WITH_DISPOSABLE_MESSAGE_ID that has status and activity data.
+  - id: sender_profile_id
+    type: STRING
+    description: REPLACE_WITH_DISPOSABLE_SENDER_PROFILE_ID visible to the organization API key.
+  - id: template_id
+    type: STRING
+    description: REPLACE_WITH_DISPOSABLE_TEMPLATE_ID visible to the selected Sender Profile.
+
+tasks:
+  - id: get_account
+    type: io.kestra.plugin.sent.account.GetAccount
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+
+  - id: list_contacts
+    type: io.kestra.plugin.sent.contacts.ListContacts
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+    pageSize: 10
+    maxPages: 5
+    fetchType: FETCH
+
+  - id: get_contact
+    type: io.kestra.plugin.sent.contacts.GetContact
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+    contactId: "{{ inputs.existing_contact_id }}"
+
+  - id: create_contact_sandbox
+    type: io.kestra.plugin.sent.contacts.CreateContact
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+    phoneNumber: "{{ inputs.test_phone_number }}"
+    defaultChannel: sent
+    sandbox: true
+    idempotencyKey: "sent_qa_create_{{ execution.id }}"
+
+  - id: update_contact_sandbox
+    type: io.kestra.plugin.sent.contacts.UpdateContact
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+    contactId: "{{ inputs.existing_contact_id }}"
+    defaultChannel: sent
+    optOut: false
+    sandbox: true
+    idempotencyKey: "sent_qa_update_{{ execution.id }}"
+
+  - id: send_message_sandbox
+    type: io.kestra.plugin.sent.messages.SendMessage
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+    to:
+      - "{{ inputs.test_phone_number }}"
+    channels:
+      - sent
+    text: "Sent Kestra plugin sandbox QA — no customer delivery"
+    sandbox: true
+    idempotencyKey: "sent_qa_message_{{ execution.id }}"
+
+  - id: get_message_status
+    type: io.kestra.plugin.sent.messages.GetMessageStatus
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+    messageId: "{{ inputs.existing_message_id }}"
+
+  - id: get_message_activities
+    type: io.kestra.plugin.sent.messages.GetMessageActivities
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+    messageId: "{{ inputs.existing_message_id }}"
+
+  - id: get_phone_number_details
+    type: io.kestra.plugin.sent.numbers.GetPhoneNumberDetails
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+    phoneNumber: "{{ inputs.test_phone_number }}"
+
+  - id: list_sender_profiles
+    type: io.kestra.plugin.sent.profiles.ListSenderProfiles
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    pageSize: 10
+    maxPages: 5
+    fetchType: FETCH
+
+  - id: get_sender_profile
+    type: io.kestra.plugin.sent.profiles.GetSenderProfile
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    senderProfileId: "{{ inputs.sender_profile_id }}"
+
+  - id: list_templates
+    type: io.kestra.plugin.sent.templates.ListTemplates
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+    pageSize: 10
+    maxPages: 5
+    fetchType: FETCH
+
+  - id: get_template
+    type: io.kestra.plugin.sent.templates.GetTemplate
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ inputs.sender_profile_id }}"
+    templateId: "{{ inputs.template_id }}"
+
+  - id: qa_summary
+    type: io.kestra.plugin.core.output.OutputValues
+    values:
+      result: PASS — all 13 Sent tasks completed
+      tasksVerified: "13"
+      mutations: sandbox only
+      contactUsed: "{{ inputs.existing_contact_id }}"
+      messageUsed: "{{ inputs.existing_message_id }}"
+      templateUsed: "{{ inputs.template_id }}"
+
+outputs:
+  - id: result
+    type: STRING
+    value: "{{ outputs.qa_summary.values.result }}"
+  - id: tasksVerified
+    type: STRING
+    value: "{{ outputs.qa_summary.values.tasksVerified }}"
+  - id: safety
+    type: STRING
+    value: "{{ outputs.qa_summary.values.mutations }}"

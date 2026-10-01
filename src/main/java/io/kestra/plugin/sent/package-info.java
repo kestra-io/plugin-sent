@@ -1,7 +1,6 @@
 @PluginSubGroup(
-    title = "Sent",
-    description = "Sent plugin for Kestra",
-    categories = PluginSubGroup.PluginCategory.DATA
+    description = "Tasks and triggers for Sent omnichannel messaging.",
+    categories = PluginSubGroup.PluginCategory.BUSINESS
 )
 package io.kestra.plugin.sent;
 

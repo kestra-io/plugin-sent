@@ -3,6 +3,7 @@ plugins {
     id "com.vanniktech.maven.publish" version "0.37.0"
     id "io.kestra.gradle.inject-bom-versions" version "1.2.10"
     id "io.kestra.gradle.plugin-doc-lint" version "1.2.10"
+    id 'io.kestra.gradle.spotless-conventions' version '1.2.10'
     id 'java-library'
     id "idea"
     id 'jacoco'
@@ -17,11 +18,11 @@ repositories {
     mavenLocal()
     mavenCentral()
     if (isBuildSnapshot) {
-        maven { url "https://central.sonatype.com/repository/maven-snapshots/" }
+        maven { url = "https://central.sonatype.com/repository/maven-snapshots/" }
     }
 }
 
-final targetJavaVersion = JavaVersion.VERSION_21
+final targetJavaVersion = JavaVersion.VERSION_25
 
 java {
     sourceCompatibility = targetJavaVersion
@@ -46,9 +47,9 @@ dependencies {
     compileOnly "org.projectlombok:lombok"
 
     // kestra
-    annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
-    compileOnly group: "io.kestra", name: "core", version: kestraVersion
-    compileOnly group: "io.kestra", name: "script", version: kestraVersion
+    annotationProcessor "io.kestra:processor:$kestraVersion"
+    compileOnly "io.kestra:core:$kestraVersion"
+    compileOnly "io.kestra:script:$kestraVersion"
 }
 
 
@@ -57,6 +58,7 @@ dependencies {
  **********************************************************************************************************************/
 test {
     useJUnitPlatform()
+    environment 'SECRET_SENT_API_KEY', 'c2VudC10ZXN0LWFwaS1rZXk='
 }
 
 dependencies {
@@ -75,13 +77,16 @@ dependencies {
     testImplementation "io.micronaut:micronaut-jackson-databind"
 
     // test deps needed only for to have a runner
-    testAnnotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
-    testImplementation group: "io.kestra", name: "core", version: kestraVersion
-    testImplementation group: "io.kestra", name: "tests", version: kestraVersion
-    testImplementation group: "io.kestra", name: "script", version: kestraVersion
-    testImplementation group: "io.kestra", name: "repository-memory", version: kestraVersion
-    testImplementation group: "io.kestra", name: "runner-memory", version: kestraVersion
-    testImplementation group: "io.kestra", name: "storage-local", version: kestraVersion
+    testAnnotationProcessor "io.kestra:processor:$kestraVersion"
+    testImplementation "io.kestra:core:$kestraVersion"
+    testImplementation "io.kestra:tests:$kestraVersion"
+    testImplementation "io.kestra:script:$kestraVersion"
+    testImplementation "io.kestra:repository-memory:$kestraVersion"
+    testImplementation "io.kestra:runner-memory:$kestraVersion"
+    testImplementation "io.kestra:storage-local:$kestraVersion"
+    testImplementation "io.kestra:indexer:$kestraVersion"
+    testImplementation 'org.wiremock:wiremock-jetty12'
+    testImplementation 'io.opentelemetry:opentelemetry-api'
 
     // test
     testImplementation "org.junit.jupiter:junit-jupiter-engine"
@@ -161,6 +166,7 @@ jar {
 
 shadowJar {
     archiveClassifier.set(null)
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles()
 }
 

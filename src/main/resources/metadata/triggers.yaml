@@ -1,0 +1,8 @@
+group: io.kestra.plugin.sent.triggers
+name: "triggers"
+title: "Sent Triggers"
+description: "Start flows from signed Sent webhook events."
+body: "EventTrigger uses Kestra's native webhook route, verifies Sent's exact HMAC scheme over raw request bytes, enforces replay tolerance, filters verified event names, and exposes a payload-derived dedupe key."
+videos: []
+createdBy: "Sent"
+managedBy: "Sent"

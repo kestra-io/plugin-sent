@@ -1,0 +1,21 @@
+id: sent_local_qa
+namespace: qa.sent
+
+tasks:
+  - id: read_account
+    type: io.kestra.plugin.sent.account.GetAccount
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+
+  - id: write_sandbox_message
+    type: io.kestra.plugin.sent.messages.SendMessage
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    to:
+      - "+12025550123"
+    channels:
+      - sent
+      - sms
+    text: "Local Kestra plugin smoke test"
+    sandbox: true
+    idempotencyKey: local_kestra_qa_001

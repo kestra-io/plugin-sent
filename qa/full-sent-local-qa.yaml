@@ -1,0 +1,124 @@
+id: sent_all_components_qa
+namespace: qa.sent
+description: One-click, local-only verification of every Sent task and the signed webhook trigger.
+
+tasks:
+  - id: get_account
+    type: io.kestra.plugin.sent.account.GetAccount
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+
+  - id: create_contact
+    type: io.kestra.plugin.sent.contacts.CreateContact
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    phoneNumber: "+12025550123"
+    defaultChannel: sms
+    sandbox: true
+
+  - id: update_contact
+    type: io.kestra.plugin.sent.contacts.UpdateContact
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    contactId: "{{ outputs.create_contact.data.id }}"
+    defaultChannel: sent
+    optOut: false
+    sandbox: true
+
+  - id: get_contact
+    type: io.kestra.plugin.sent.contacts.GetContact
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    contactId: "{{ outputs.create_contact.data.id }}"
+
+  - id: list_contacts
+    type: io.kestra.plugin.sent.contacts.ListContacts
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    fetchType: FETCH
+
+  - id: send_message
+    type: io.kestra.plugin.sent.messages.SendMessage
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    to:
+      - "+12025550123"
+    channels:
+      - sent
+      - sms
+    text: "Safe local full-plugin verification"
+    sandbox: true
+
+  - id: get_message_status
+    type: io.kestra.plugin.sent.messages.GetMessageStatus
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    messageId: "{{ outputs.send_message.data.recipients[0].message_id }}"
+
+  - id: get_message_activities
+    type: io.kestra.plugin.sent.messages.GetMessageActivities
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    messageId: "{{ outputs.send_message.data.recipients[0].message_id }}"
+
+  - id: get_phone_number_details
+    type: io.kestra.plugin.sent.numbers.GetPhoneNumberDetails
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    phoneNumber: "+12025550123"
+
+  - id: get_sender_profile
+    type: io.kestra.plugin.sent.profiles.GetSenderProfile
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    senderProfileId: profile_local_qa
+
+  - id: list_sender_profiles
+    type: io.kestra.plugin.sent.profiles.ListSenderProfiles
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    fetchType: FETCH
+
+  - id: get_template
+    type: io.kestra.plugin.sent.templates.GetTemplate
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    templateId: template_local_qa
+
+  - id: list_templates
+    type: io.kestra.plugin.sent.templates.ListTemplates
+    apiKey: local-qa-key
+    baseUrl: http://127.0.0.1:9090/v3
+    status: approved
+    fetchType: FETCH
+
+  - id: final_result
+    type: io.kestra.plugin.core.output.OutputValues
+    values:
+      webhookEvent: "{{ trigger.event }}"
+      result: "PASS — all 13 Sent actions and the signed webhook trigger succeeded"
+      actionsExecuted: "13"
+      triggerVerified: "true"
+      safety: "Local mock and sandbox mutations only; no real message or provider data"
+
+outputs:
+  - id: result
+    type: STRING
+    value: "{{ outputs.final_result.values.result }}"
+  - id: actionsExecuted
+    type: STRING
+    value: "{{ outputs.final_result.values.actionsExecuted }}"
+  - id: triggerVerified
+    type: STRING
+    value: "{{ outputs.final_result.values.triggerVerified }}"
+  - id: safety
+    type: STRING
+    value: "{{ outputs.final_result.values.safety }}"
+
+triggers:
+  - id: sent_webhook
+    type: io.kestra.plugin.sent.triggers.EventTrigger
+    key: full-local-webhook-key
+    signingSecret: whsec_abcdef1234567890
+    events:
+      - "*"

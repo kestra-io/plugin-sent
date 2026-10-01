@@ -1,0 +1,15 @@
+id: sent_signed_events
+namespace: company.messaging
+
+tasks:
+  - id: log_verified_event
+    type: io.kestra.plugin.core.log.Log
+    message: "Verified Sent event {{ trigger.event }} with dedupe key {{ trigger.dedupeKey }}"
+
+triggers:
+  - id: sent_webhook
+    type: io.kestra.plugin.sent.triggers.EventTrigger
+    key: "{{ secret('SENT_WEBHOOK_URL_KEY') }}"
+    signingSecret: "{{ secret('SENT_WEBHOOK_SIGNING_SECRET') }}"
+    events:
+      - message.received

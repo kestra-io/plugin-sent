@@ -1,0 +1,20 @@
+id: sent_failure_alert
+namespace: company.operations
+
+tasks:
+  - id: production_step
+    type: io.kestra.plugin.core.log.Log
+    message: "Replace this task with the production workload."
+
+errors:
+  - id: notify_operator
+    type: io.kestra.plugin.sent.messages.SendMessage
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    to:
+      - "{{ secret('ON_CALL_PHONE') }}"
+    channels:
+      - sent
+      - sms
+    text: "Flow {{ flow.namespace }}.{{ flow.id }} failed in execution {{ execution.id }}."
+    idempotencyKey: "failure_{{ execution.id }}"
+    sandbox: true

@@ -1,0 +1,15 @@
+id: sent_text_sandbox
+namespace: io.kestra.plugin.sent
+
+inputs:
+  - id: recipient
+    type: STRING
+
+tasks:
+  - id: send_message
+    type: io.kestra.plugin.sent.messages.SendMessage
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    to:
+      - "{{ inputs.recipient }}"
+    text: "Kestra Sent sandbox validation"
+    sandbox: true

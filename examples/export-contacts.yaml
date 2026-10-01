@@ -1,0 +1,9 @@
+id: sent_contact_export
+namespace: company.messaging
+
+tasks:
+  - id: export_contacts
+    type: io.kestra.plugin.sent.contacts.ListContacts
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    pageSize: 100
+    fetchType: STORE

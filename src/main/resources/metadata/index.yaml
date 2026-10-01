@@ -1,8 +1,8 @@
 group: io.kestra.plugin.sent
 name: "sent"
 title: "Sent"
-description: "Sent plugin for Kestra"
-body: ""
+description: "Native Kestra tasks and a signed webhook trigger for Sent omnichannel messaging."
+body: "Send idempotent messages, manage contacts, inspect messages and activities, browse templates and Sender Profiles, look up phone numbers, and start flows from HMAC-verified Sent webhooks. The plugin uses the Sent v3 API, optional Sender Profile scoping, bounded retry-safe requests, sandbox-aware mutations, FetchType outputs, and raw-body webhook verification."
 videos: []
-createdBy: "Kestra Core Team"
-managedBy: "Kestra Core Team"
+createdBy: "Sent"
+managedBy: "Sent"
