@@ -1,0 +1,26 @@
+micronaut:
+  server:
+    host: 127.0.0.1
+endpoints:
+  all:
+    port: 18084
+    host: 127.0.0.1
+kestra:
+  server:
+    basic-auth:
+      username: review@example.invalid
+      password: SentLocalReviewOnly2026!
+  repository:
+    type: h2
+  queue:
+    type: h2
+  storage:
+    type: local
+    local:
+      base-path: /tmp/plugin-sent-webhook-integration
+datasources:
+  h2:
+    url: jdbc:h2:mem:sent-webhook-test;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driverClassName: org.h2.Driver

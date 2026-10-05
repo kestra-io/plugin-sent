@@ -1,0 +1,21 @@
+id: sent_template_sandbox
+namespace: company.messaging
+
+inputs:
+  - id: recipient
+    type: STRING
+  - id: order_id
+    type: STRING
+
+tasks:
+  - id: send_template
+    type: io.kestra.plugin.sent.messages.SendMessage
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    to:
+      - "{{ inputs.recipient }}"
+    template:
+      name: order_update
+      parameters:
+        order_id: "{{ inputs.order_id }}"
+    idempotencyKey: "order_{{ inputs.order_id }}"
+    sandbox: true

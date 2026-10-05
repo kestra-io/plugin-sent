@@ -1,0 +1,7 @@
+group: io.kestra.plugin.sent.messages
+name: "messages"
+title: "Sent Messages"
+description: "Send Sent messages and inspect status or delivery activities."
+body: "SendMessage supports text or templates, channel fallback, multiple E.164 recipients, sandbox simulation, and idempotency. Read tasks retrieve status and activity history."
+videos: []
+partner: "Sent"

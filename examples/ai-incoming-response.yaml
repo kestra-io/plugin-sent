@@ -1,0 +1,31 @@
+id: sent_ai_incoming_response
+namespace: company.support
+
+tasks:
+  - id: draft_reply
+    type: io.kestra.plugin.openai.ChatCompletion
+    apiKey: "{{ secret('OPENAI_API_KEY') }}"
+    model: gpt-4o
+    prompt: |
+      Draft a concise customer-support reply to this incoming message:
+      {{ trigger.payload.text }}
+
+  - id: send_reply
+    type: io.kestra.plugin.sent.messages.SendMessage
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    to:
+      - "{{ trigger.payload.from }}"
+    channels:
+      - sent
+      - sms
+    text: "{{ outputs.draft_reply.choices[0].message.content }}"
+    idempotencyKey: "ai_reply_{{ trigger.payload.message_id }}"
+    sandbox: true
+
+triggers:
+  - id: sent_webhook
+    type: io.kestra.plugin.sent.triggers.EventTrigger
+    key: "{{ secret('SENT_WEBHOOK_URL_KEY') }}"
+    signingSecret: "{{ secret('SENT_WEBHOOK_SIGNING_SECRET') }}"
+    events:
+      - message.received

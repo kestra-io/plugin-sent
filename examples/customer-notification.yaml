@@ -1,0 +1,25 @@
+id: sent_customer_notification
+namespace: company.orders
+
+inputs:
+  - id: recipient
+    type: STRING
+  - id: order_id
+    type: STRING
+
+tasks:
+  - id: notify_customer
+    type: io.kestra.plugin.sent.messages.SendMessage
+    apiKey: "{{ secret('SENT_API_KEY') }}"
+    profileId: "{{ secret('SENT_PROFILE_ID') }}"
+    to:
+      - "{{ inputs.recipient }}"
+    channels:
+      - sent
+      - sms
+    template:
+      name: order_update
+      parameters:
+        order_number: "{{ inputs.order_id }}"
+    idempotencyKey: "order_{{ inputs.order_id }}"
+    sandbox: true

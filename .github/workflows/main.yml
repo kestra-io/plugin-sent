@@ -42,6 +42,93 @@ jobs:
   check:
     uses: kestra-io/actions/.github/workflows/plugins.yml@main
     with:
+      java-version: '21'
       skip-test: ${{ github.event.inputs.skip-test == 'true' }}
       kestra-version: ${{ github.event.inputs.kestra-version }}
     secrets: inherit
+
+  webhook-integration:
+    name: Signed webhook / Kestra 1.3.39
+    if: ${{ github.event.inputs.skip-test != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Java 21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build plugin and check documentation and formatting
+        run: ./gradlew shadowJar spotlessCheck lintPluginDocs --no-daemon --console=plain
+      - name: Exercise the real signed webhook route
+        shell: bash
+        run: |
+          set -euo pipefail
+          sent_test_dir="$(mktemp -d)"
+          sent_log="$GITHUB_WORKSPACE/build/reports/webhook-server.log"
+          sent_pid=''
+          mkdir -p "$sent_test_dir/plugins" "$(dirname "$sent_log")"
+          cleanup() {
+            result=$?
+            trap - EXIT
+            if [[ -n "$sent_pid" ]]; then
+              kill "$sent_pid" 2>/dev/null || true
+              wait "$sent_pid" 2>/dev/null || true
+            fi
+            if [[ "$result" -ne 0 && -f "$sent_log" ]]; then
+              tail -n 200 "$sent_log"
+            fi
+            exit "$result"
+          }
+          trap cleanup EXIT
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 180 \
+            https://github.com/kestra-io/kestra/releases/download/v1.3.39/kestra-1.3.39 \
+            --output "$sent_test_dir/kestra.jar"
+          (cd "$sent_test_dir" && echo 'a621b39ee18a550cd26ed9820cb2c4445a4ca9d6463497c94daa5383e0a8cc46  kestra.jar' | shasum -a 256 --check)
+          sent_version="$(sed -n 's/^version=//p' gradle.properties)"
+          cp "build/libs/plugin-sent-${sent_version}.jar" "$sent_test_dir/plugins/"
+          (
+            cd "$sent_test_dir"
+            exec "$JAVA_HOME/bin/java" -Xmx512m -jar kestra.jar server local \
+              --port=18083 --worker-thread=4 --no-tutorials \
+              --plugins="$sent_test_dir/plugins" \
+              --config="$GITHUB_WORKSPACE/src/test/resources/kestra-webhook-integration.yml"
+          ) >"$sent_log" 2>&1 &
+          sent_pid=$!
+          sent_ready=false
+          for ((attempt=0; attempt<120; attempt++)); do
+            if ! kill -0 "$sent_pid" 2>/dev/null; then
+              echo 'Kestra exited before becoming ready.' >&2
+              exit 1
+            fi
+            # Public dummy credentials for the isolated loopback-only test server.
+            if curl --fail --silent --max-time 2 \
+              --user 'review@example.invalid:SentLocalReviewOnly2026!' \
+              http://127.0.0.1:18083/api/v1/main/flows/search >/dev/null; then
+              sent_ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$sent_ready" != true ]]; then
+            echo 'Kestra did not become ready within the startup deadline.' >&2
+            exit 1
+          fi
+          ./gradlew webhookIntegrationTest -PkestraUrl=http://localhost:18083 --no-daemon --console=plain
+      - name: Upload route-test reports and server log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: signed-webhook-integration
+          if-no-files-found: warn
+          retention-days: 7
+          path: |
+            build/reports/tests/webhookIntegrationTest/
+            build/test-results/webhookIntegrationTest/
+            build/reports/webhook-server.log

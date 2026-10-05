@@ -39,19 +39,25 @@
 
 ## Why
 
-- What user problem does this solve? Teams need a concrete starting point for building and validating new Kestra plugins without recreating the same project scaffolding from scratch.
-- Why would a team adopt this plugin in a workflow? It gives plugin authors a ready-made reference repo they can adapt alongside their own build, test, and publishing workflow.
-- What operational/business outcome does it enable? It shortens plugin delivery time, reduces setup mistakes, and makes internal or partner plugin development more repeatable.
+Use Sent's messaging, contact, Sender Profile, template, and phone-number APIs in Kestra workflows, and start flows from signed Sent webhook events.
 
 ## What
 
-- Provides plugin components under `io.kestra.plugin.sent`.
-- Includes classes such as `Example`, `Trigger`.
+- 13 tasks under `io.kestra.plugin.sent`: GetAccount, CreateContact, UpdateContact, GetContact, ListContacts, SendMessage, GetMessageStatus, GetMessageActivities, GetPhoneNumberDetails, ListSenderProfiles, GetSenderProfile, ListTemplates, and GetTemplate.
+- One signed webhook trigger: `io.kestra.plugin.sent.triggers.EventTrigger`.
+- Secret API-key authentication, bounded retries, mutation idempotency, and paginated results streamed to internal storage by default.
+- Targets Kestra **1.3.39 LTS** and **Java 21**. Build and test with Java 21:
+
+```shell
+./gradlew clean spotlessCheck check lintPluginDocs shadowJar
+```
+
+Tests use dummy credentials and local fixtures; they do not send customer messages. For configuration, sandbox examples, and webhook security details, see the [plugin documentation](src/main/resources/doc/io.kestra.plugin.sent.md).
 
 ## Running Kestra locally with this plugin
 
 1. Build the shadow JAR: `./gradlew shadowJar`. The output lands in `build/libs/`.
-2. Run `docker compose up`. `docker-compose.yml` builds `kestra/kestra:latest` and mounts `build/libs/` to `/app/plugins/`, so Kestra picks up the jar on startup.
+2. Run `docker compose up`. `docker-compose.yml` builds `kestra/kestra:v1.3.39` and mounts `build/libs/` to `/app/plugins/`, so Kestra picks up the jar on startup.
 3. Kestra UI is available at [localhost:8080](http://localhost:8080).
 
 ### Plugins folder gotcha
@@ -67,6 +73,31 @@ Unable to create JFR repository directory using base location (/tmp)
 `docker-compose.yml` works around this by mounting `/tmp` as `tmpfs`. If you build your own compose file or run Kestra via `docker run`, add the same workaround, e.g. `-v /tmp:/tmp` or `--tmpfs /tmp`. Tracked upstream in [kestra-io/kestra#17405](https://github.com/kestra-io/kestra/issues/17405).
 
 ## Documentation
+
+### Signed webhook HTTP integration test
+
+In addition to the default mocked/unit tests, an explicit integration task exercises the real Kestra webhook route and execution queue. Use Java 21 and an isolated local Kestra 1.3.39 server; the test creates temporary flows under `qa.plugin.sent` and never calls the Sent API.
+
+Download the [official Kestra 1.3.39 standalone release](https://github.com/kestra-io/kestra/releases/tag/v1.3.39) and verify its published checksum. Set `JAVA_HOME` to a Java 21 installation and `KESTRA_TEST_JAR` to the downloaded executable JAR's absolute path. This avoids relying on the Docker image's bundled JVM.
+
+```shell
+./gradlew shadowJar
+sent_test_plugins="$(mktemp -d)"
+cp build/libs/plugin-sent-1.0.0-SNAPSHOT.jar "$sent_test_plugins/"
+"$JAVA_HOME/bin/java" -jar "$KESTRA_TEST_JAR" server local \
+  --port=18083 --worker-thread=4 --no-tutorials \
+  --plugins="$sent_test_plugins" \
+  --config="$PWD/src/test/resources/kestra-webhook-integration.yml"
+# In another terminal, once Kestra is ready:
+./gradlew webhookIntegrationTest -PkestraUrl=http://localhost:18083
+```
+
+Stop the disposable server with Ctrl-C afterwards. `server local` creates a local database in the ignored `data/` directory. Do not run this test server against an existing Kestra data directory.
+
+The credentials in that configuration are public dummy values, for this loopback-only disposable server. Do not use them for a deployed instance. The integration tests verify UTF-8/whitespace preservation, successful execution and trigger outputs, signature tampering, stale signatures, missing signatures, event filtering, malformed UTF-8, and non-UTF-8 charset rejection. They are separate from `test` because the Kestra webserver is not published as a Maven test dependency at 1.3.39.
+
+The `webhook-integration` job in the Main GitHub Actions workflow runs these seven tests automatically on pull requests and normal CI runs (unless tests are explicitly skipped via workflow dispatch). It builds the plugin with Java 21, verifies the pinned Kestra 1.3.39 release checksum, starts an isolated loopback-only server, waits for readiness, and runs `webhookIntegrationTest`. Test reports and server logs are uploaded even on failure, and the server is stopped on exit. This job uses no Sent credentials and does not contact the Sent API.
+
 * Full documentation can be found under: [kestra.io/docs](https://kestra.io/docs)
 * Documentation for developing a plugin is included in the [Plugin Developer Guide](https://kestra.io/docs/plugin-developer-guide/)
 

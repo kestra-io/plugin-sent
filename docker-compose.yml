@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     command: server local
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./build/libs/:/app/plugins/
     # works around "Unable to create JFR repository directory using base
