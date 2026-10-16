@@ -1,5 +1,7 @@
 package io.kestra.plugin.sent.triggers;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.http.HttpHeaders;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -17,10 +19,12 @@ import io.kestra.core.http.HttpResponse;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.triggers.TriggerOutput;
 import io.kestra.core.queues.QueueException;
 import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.core.services.WebhookService;
 import io.kestra.plugin.core.trigger.AbstractWebhookTrigger;
 import io.kestra.plugin.core.trigger.WebhookContext;
 
@@ -159,10 +163,46 @@ public class EventTrigger extends AbstractWebhookTrigger implements TriggerOutpu
             return Mono.just(HttpResponse.of(HttpResponse.Status.NO_CONTENT));
         }
         try {
-            context.webhookService().startExecution(maybeExecution.get());
-            return Mono.just(HttpResponse.of(HttpResponse.Status.OK));
+            return toResponse(startExecution(context.webhookService(), maybeExecution.get()));
         } catch (QueueException e) {
             return Mono.just(HttpResponse.of(HttpResponse.Status.INTERNAL_SERVER_ERROR));
+        }
+    }
+
+    // Any Mono error (QueueException, 2.x start TimeoutException) maps to 500 so nothing escapes evaluate (issue #9).
+    static Mono<HttpResponse<?>> toResponse(Mono<Void> started) {
+        return started
+            .<HttpResponse<?>> thenReturn(HttpResponse.of(HttpResponse.Status.OK))
+            .onErrorReturn(HttpResponse.of(HttpResponse.Status.INTERNAL_SERVER_ERROR));
+    }
+
+    // 1.3 returns void, 2.x a Mono: resolved reflectively so one JAR runs on both (issue #9)
+    private static final Method START_EXECUTION_METHOD = findStartExecutionMethod();
+
+    private static Method findStartExecutionMethod() {
+        try {
+            return WebhookService.class.getMethod("startExecution", Execution.class);
+        } catch (NoSuchMethodException e) {
+            throw new ExceptionInInitializerError(
+                "WebhookService.startExecution is unavailable on this Kestra version: " + e
+            );
+        }
+    }
+
+    private static Mono<Void> startExecution(WebhookService service, Execution execution) throws QueueException {
+        try {
+            var result = START_EXECUTION_METHOD.invoke(service, execution);
+            if (result instanceof Mono<?> mono) {
+                return mono.then();
+            }
+            return Mono.empty();
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof QueueException queueException) {
+                throw queueException;
+            }
+            throw new IllegalStateException("WebhookService.startExecution failed.", e.getCause());
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException("WebhookService.startExecution is unavailable on this Kestra version.", e);
         }
     }
 
